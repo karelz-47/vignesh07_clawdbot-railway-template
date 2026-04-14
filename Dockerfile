@@ -39,6 +39,20 @@ ENV OPENCLAW_PREFER_PNPM=1
 RUN pnpm ui:install && pnpm ui:build
 
 
+FROM golang:1.26-bookworm AS gog-build
+
+RUN apt-get update \
+  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    git \
+    make \
+    ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /gogcli
+RUN git clone --depth 1 https://github.com/steipete/gogcli.git .
+RUN make
+
+
 # Runtime image
 FROM node:22-bookworm
 ENV NODE_ENV=production
@@ -55,11 +69,7 @@ RUN apt-get update \
   && curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg \
   && apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends google-cloud-cli \
-  && curl -L https://github.com/steipete/gog/releases/latest/download/gog_Linux_x86_64.tar.gz \
-    | tar -xz -C /usr/local/bin \
-  && chmod +x /usr/local/bin/gog \
   && which gcloud \
-  && which gog \
   && rm -rf /var/lib/apt/lists/*
 
 # `openclaw update` expects pnpm. Provide it in the runtime image.
@@ -82,6 +92,8 @@ RUN npm install --omit=dev && npm cache clean --force
 
 # Copy built openclaw
 COPY --from=openclaw-build /openclaw /openclaw
+COPY --from=gog-build /gogcli/bin/gog /usr/local/bin/gog
+RUN chmod +x /usr/local/bin/gog && which gog
 
 # Provide an openclaw executable
 RUN printf '%s\n' '#!/usr/bin/env bash' 'exec node /openclaw/dist/entry.js "$@"' > /usr/local/bin/openclaw \
