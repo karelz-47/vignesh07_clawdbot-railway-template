@@ -99,6 +99,20 @@ RUN chmod +x /usr/local/bin/gog && which gog
 RUN printf '%s\n' '#!/usr/bin/env bash' 'exec node /openclaw/dist/entry.js "$@"' > /usr/local/bin/openclaw \
   && chmod +x /usr/local/bin/openclaw
 
+ENV GOG_OAUTH_CLIENT_FILE=/data/gog/client_secret.json
+
+RUN printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'set -euo pipefail' \
+  'mkdir -p /data/gog' \
+  'if [ -n "${GOG_OAUTH_CLIENT_JSON:-}" ]; then' \
+  '  printf "%s" "$GOG_OAUTH_CLIENT_JSON" > "$GOG_OAUTH_CLIENT_FILE"' \
+  '  chmod 600 "$GOG_OAUTH_CLIENT_FILE"' \
+  'fi' \
+  'exec node src/server.js' \
+  > /usr/local/bin/start-openclaw-wrapper \
+  && chmod +x /usr/local/bin/start-openclaw-wrapper
+
 COPY src ./src
 
 # The wrapper listens on $PORT.
@@ -109,4 +123,4 @@ EXPOSE 8080
 
 # Ensure PID 1 reaps zombies and forwards signals.
 ENTRYPOINT ["tini", "--"]
-CMD ["node", "src/server.js"]
+CMD ["/usr/local/bin/start-openclaw-wrapper"]
