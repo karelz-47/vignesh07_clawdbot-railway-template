@@ -33,6 +33,8 @@ RUN set -eux; \
     sed -i -E 's/"openclaw"[[:space:]]*:[[:space:]]*"workspace:[^"]+"/"openclaw": "*"/g' "$f"; \
   done
 
+RUN sed -i 's/^minimumReleaseAge: 2880/minimumReleaseAge: 0/' pnpm-workspace.yaml
+
 RUN pnpm install --no-frozen-lockfile
 RUN pnpm build
 ENV OPENCLAW_PREFER_PNPM=1
